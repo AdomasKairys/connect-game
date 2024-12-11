@@ -19,26 +19,23 @@ public class LevelData
 
 public class LevelManager : MonoBehaviour
 {
-    [SerializeField] TextAsset levelData;
+    [HideInInspector]
+    public int CurrentLevelIndex = -1;
+    [SerializeField]
+    private TextAsset levelData;
 
-    private static LevelManager _instance;
-    public static LevelManager Instance { get { return _instance; } }
-
-    private Levels _levels;
-    public Levels Levels { get { return _levels; } }
-
-    private int _currentLevelIndex = -1;
-    public int CurrentLevelIndex { get { return _currentLevelIndex; } set { _currentLevelIndex = value; } }
+    public static LevelManager Instance { get; private set; }
+    public Levels Levels { get; private set; }
 
     private void Awake()
     {
-        if (_instance != null && _instance != this)
+        if (Instance != null && Instance != this)
             Destroy(this.gameObject);
         else
-            _instance = this;
+            Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        _levels = LoadLevelsFromFile();
+        Levels = LoadLevelsFromFile();
     }
     private Levels LoadLevelsFromFile()
     {

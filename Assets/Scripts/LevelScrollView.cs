@@ -4,8 +4,10 @@ using UnityEngine;
 
 public class LevelScrollView : MonoBehaviour
 {
-    [SerializeField] GameObject levelItemPrefab;
-    [SerializeField] Transform levelScrollViewTransform;
+    [SerializeField]
+    private GameObject levelItemPrefab;
+    [SerializeField]
+    private Transform levelScrollViewTransform;
 
     // Start is called before the first frame update
     void Start()
