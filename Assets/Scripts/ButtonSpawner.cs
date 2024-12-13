@@ -14,27 +14,39 @@ public class ButtonSpawner : MonoBehaviour
     }
     void Start()
     {
+        SpawnButtons();
+    }
+
+    private void SpawnButtons()
+    {
         var coordinateToSpawn = LevelDataToCoordinates();
 
+        GameObject currentObject = null;
+        GameObject firstObject = null;
         GameObject previousObject = null;
-        GameObject currentObject;
         for (int i = 0; i < coordinateToSpawn.Length; i++, previousObject = currentObject)
         {
             currentObject = Instantiate(buttonPrefab, coordinateToSpawn[i], Quaternion.identity);
             bool hasComponent = currentObject.TryGetComponent(out ButtonController buttonController);
 
-            if(!hasComponent)
+            if (!hasComponent)
                 continue;
 
-            if(previousObject == null)
+            buttonController.SetNumberText((i+1).ToString());
+
+            if (previousObject == null)
             {
-                buttonController.isReadyToRender = true;
-                buttonController.isActiveToClick = true;
+                firstObject = currentObject;
+                buttonController.isRoot = true;
                 continue;
             }
 
             if (previousObject.TryGetComponent(out ButtonController previousButtonController))
-                previousButtonController.connectedButton = buttonController;
+                buttonController.previousButton = previousButtonController;
+        }
+        if (firstObject != null && currentObject != null)
+        {
+            firstObject.GetComponent<ButtonController>().previousButton = currentObject.GetComponent<ButtonController>();
         }
     }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -10,9 +11,11 @@ public class ButtonController : MonoBehaviour, IPointerClickHandler
     [HideInInspector]
     public bool isReadyToRender = false;
     [HideInInspector]
-    public bool isActiveToClick = false;
-
-    public ButtonController connectedButton;
+    public bool isClicked = false;
+    [HideInInspector]
+    public bool isRoot = false;
+    [HideInInspector]
+    public ButtonController previousButton;
 
     [Header("Sprite properties")]
     [SerializeField, Tooltip("Default renderer, on click sprite will change to activeSprite")] 
@@ -24,59 +27,68 @@ public class ButtonController : MonoBehaviour, IPointerClickHandler
     [SerializeField]
     private LineRenderer lineRenderer;
     [SerializeField]
-    private float lineRenderAnimationTime = 2f;
+    private float lineRenderAnimationSpeed = 20f;
     [Header("Text number properties")]
     [SerializeField]
     private TextMeshPro numberText;
     [SerializeField]
     private float textFadeOutAnimationTime = 1f;
 
-    private float _currentRenderTime = 0f;
-
-
-    public event EventHandler OnPreviousRopeFinishedDrawing;
+    public event EventHandler OnRopeFinishedDrawing;
 
     private void Start()
     {
-        lineRenderer.SetPosition(0, transform.position);
-        lineRenderer.SetPosition(1, transform.position);
+        if (previousButton == null)
+            return;
+        lineRenderer.SetPosition(0, previousButton.transform.position);
+        lineRenderer.SetPosition(1, previousButton.transform.position);
     }
+
+    public void SetNumberText(string text) => numberText.text = text;
     public void OnPointerClick(PointerEventData eventData)
     {
-        if(connectedButton == null || !isActiveToClick)
+        if(!isRoot && (previousButton == null || isClicked || !previousButton.isClicked))
             return;
 
         spriteRenderer.sprite = activeSprite;
+        isClicked = true;
+        StartCoroutine(FadeOutText());
 
+        isReadyToRender = isRoot;
 
-        connectedButton.isActiveToClick = true;
-
-        if (isReadyToRender)
-        {
+        if (!previousButton.isReadyToRender)
+            previousButton.OnRopeFinishedDrawing += (_,_) => StartCoroutine(RenderLine());
+        else
             StartCoroutine(RenderLine());
-            return;
-        }
-
-        if (isActiveToClick)
-        {
-            OnPreviousRopeFinishedDrawing += (_, _) => StartCoroutine(RenderLine());
-        }
     }
     private IEnumerator FadeOutText()
     {
-        yield return null;
+        float currentFadeOutTime = 0f;
+        
+        var color = numberText.color;
+
+        while (currentFadeOutTime < textFadeOutAnimationTime)
+        {
+            color.a = Mathf.Lerp(1, 0, currentFadeOutTime / textFadeOutAnimationTime);
+            numberText.color = color;
+            currentFadeOutTime += Time.deltaTime;
+            yield return null;
+        }
+        numberText.gameObject.SetActive(false);
     }
     private IEnumerator RenderLine()
     {
-        while(_currentRenderTime < lineRenderAnimationTime)
+        float currentRenderTime = 0f;
+        float scaledLineRenderAnimationTime = (transform.position - previousButton.transform.position).magnitude / lineRenderAnimationSpeed;
+
+        while (currentRenderTime < scaledLineRenderAnimationTime)
         {
-            var endPostion = Vector3.Lerp(lineRenderer.GetPosition(0), connectedButton.transform.position, _currentRenderTime / lineRenderAnimationTime);
+            var endPostion = Vector3.Lerp(lineRenderer.GetPosition(0), transform.position, currentRenderTime / scaledLineRenderAnimationTime);
             lineRenderer.SetPosition(1, endPostion);
-            _currentRenderTime += Time.deltaTime;
+            currentRenderTime += Time.deltaTime;
             yield return null;
         }
-        connectedButton.OnPreviousRopeFinishedDrawing?.Invoke(this, EventArgs.Empty);
-        connectedButton.isReadyToRender = true;
-
+        OnRopeFinishedDrawing?.Invoke(this, EventArgs.Empty);
+        isReadyToRender = true;
     }
 }

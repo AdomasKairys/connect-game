@@ -13,4 +13,8 @@ public class GameManager : MonoBehaviour
         else
             Instance = this;
     }
+
+
+
+
 }
