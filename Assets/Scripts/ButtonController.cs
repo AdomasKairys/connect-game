@@ -2,20 +2,16 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 public class ButtonController : MonoBehaviour, IPointerClickHandler
 {
-    [HideInInspector]
-    public bool isReadyToRender = false;
-    [HideInInspector]
-    public bool isClicked = false;
-    [HideInInspector]
-    public bool isRoot = false;
-    [HideInInspector]
-    public ButtonController previousButton;
+    [HideInInspector] public bool isReadyToRender = false;
+    [HideInInspector] public bool isClicked = false;
+    [HideInInspector] public bool isRoot = false;
+    [HideInInspector] public int buttonIndex = 0;
+    [HideInInspector] public ButtonController previousButton;
 
     [Header("Sprite properties")]
     [SerializeField, Tooltip("Default renderer, on click sprite will change to activeSprite")] 
@@ -24,71 +20,81 @@ public class ButtonController : MonoBehaviour, IPointerClickHandler
     private Sprite activeSprite;
 
     [Header("Rope properties")]
-    [SerializeField]
-    private LineRenderer lineRenderer;
-    [SerializeField]
+    [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField, Tooltip("Speed at which the rope animation plays")]
     private float lineRenderAnimationSpeed = 20f;
+
     [Header("Text number properties")]
-    [SerializeField]
-    private TextMeshPro numberText;
-    [SerializeField]
-    private float textFadeOutAnimationTime = 1f;
+    [SerializeField] private TextMeshPro numberText;
+    [SerializeField, Tooltip("Duration (seconds) of the text fade-out animation")]
+    private float textFadeOutAnimationDuration = 1f;
 
     public event EventHandler OnRopeFinishedDrawing;
 
     private void Start()
     {
-        if (previousButton == null)
+        if (previousButton == null || lineRenderer == null || numberText == null)
+        {
+            Debug.LogError("Critical dependencies are missing. Destroying this ButtonController.");
+            Destroy(this);
             return;
-        lineRenderer.SetPosition(0, previousButton.transform.position);
-        lineRenderer.SetPosition(1, previousButton.transform.position);
+        }
+
+        OnRopeFinishedDrawing += (_, _) => GameManager.Instance.IncrementButtonCount();
+
+        numberText.text = $"{buttonIndex+1}";
+        Vector3 startPos = previousButton.transform.position;
+        lineRenderer.SetPosition(0, startPos);
+        lineRenderer.SetPosition(1, startPos);
     }
 
-    public void SetNumberText(string text) => numberText.text = text;
     public void OnPointerClick(PointerEventData eventData)
     {
-        if(!isRoot && (previousButton == null || isClicked || !previousButton.isClicked))
+        // Validation: Ensure the button can be clicked
+        if (isClicked || (!isRoot && !previousButton.isClicked))
             return;
 
         spriteRenderer.sprite = activeSprite;
         isClicked = true;
         StartCoroutine(FadeOutText());
 
-        isReadyToRender = isRoot;
-
-        if (!previousButton.isReadyToRender)
-            previousButton.OnRopeFinishedDrawing += (_,_) => StartCoroutine(RenderLine());
-        else
+        // Handle rope logic
+        if (previousButton.isRoot || previousButton.isReadyToRender)
             StartCoroutine(RenderLine());
+        else
+            previousButton.OnRopeFinishedDrawing += (_, _) => StartCoroutine(RenderLine());
+
     }
     private IEnumerator FadeOutText()
     {
-        float currentFadeOutTime = 0f;
-        
-        var color = numberText.color;
+        float elapsedTime  = 0f;
+        var originalColor = numberText.color;
+        var targetColor  = new Color(originalColor.r, originalColor.g, originalColor.b, 0f);
 
-        while (currentFadeOutTime < textFadeOutAnimationTime)
+        while (elapsedTime  < textFadeOutAnimationDuration)
         {
-            color.a = Mathf.Lerp(1, 0, currentFadeOutTime / textFadeOutAnimationTime);
-            numberText.color = color;
-            currentFadeOutTime += Time.deltaTime;
+            numberText.color = Color.Lerp(originalColor, targetColor , elapsedTime  / textFadeOutAnimationDuration);
+            elapsedTime  += Time.deltaTime;
             yield return null;
         }
+
         numberText.gameObject.SetActive(false);
     }
     private IEnumerator RenderLine()
     {
-        float currentRenderTime = 0f;
-        float scaledLineRenderAnimationTime = (transform.position - previousButton.transform.position).magnitude / lineRenderAnimationSpeed;
+        float elapsedTime = 0f;
+        float animationDuration  = (transform.position - previousButton.transform.position).magnitude / lineRenderAnimationSpeed;
 
-        while (currentRenderTime < scaledLineRenderAnimationTime)
+        Vector3 startPosition = lineRenderer.GetPosition(0);
+        Debug.Log($"Rendering rope from {startPosition} to {transform.position}");
+        while (elapsedTime < animationDuration)
         {
-            var endPostion = Vector3.Lerp(lineRenderer.GetPosition(0), transform.position, currentRenderTime / scaledLineRenderAnimationTime);
+            Vector3 endPostion = Vector3.Lerp(startPosition, transform.position, elapsedTime / animationDuration );
             lineRenderer.SetPosition(1, endPostion);
-            currentRenderTime += Time.deltaTime;
+            elapsedTime += Time.deltaTime;
             yield return null;
         }
-        OnRopeFinishedDrawing?.Invoke(this, EventArgs.Empty);
         isReadyToRender = true;
+        OnRopeFinishedDrawing?.Invoke(this, EventArgs.Empty);
     }
 }

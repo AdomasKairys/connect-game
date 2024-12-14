@@ -7,24 +7,17 @@ using UnityEngine.UI;
 
 public class LevelItem : MonoBehaviour
 {
-    [SerializeField]
-    private TextMeshProUGUI levelText;
-    [SerializeField]
-    private Button levelButton;
+    [SerializeField] private TextMeshProUGUI levelText;
 
     private int _levelDataIndex;
-
     public void CreateLevel(string levelName, int levelDataIndex)
     {
         levelText.text = levelName;
         _levelDataIndex = levelDataIndex;
-        levelButton.onClick.AddListener(() => EnterLevel());
     }
 
-    private void EnterLevel()
+    public void EnterGameLevel()
     {
-        LevelManager.Instance.CurrentLevelIndex = _levelDataIndex;
-
-        SceneManager.LoadScene("GameScene"); //switch to async later
+        LevelManager.Instance.LoadGameLevel(_levelDataIndex);
     }
 }

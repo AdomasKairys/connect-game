@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
+using UnityEngine.SceneManagement;
 
 
 [System.Serializable]
@@ -19,25 +20,39 @@ public class LevelData
 
 public class LevelManager : MonoBehaviour
 {
-    [HideInInspector]
-    public int CurrentLevelIndex = -1;
-    [SerializeField]
-    private TextAsset levelData;
-
-    public static LevelManager Instance { get; private set; }
+    [SerializeField] private string gameScene;
+    [SerializeField] private string mainMenuScene;
+    [SerializeField] private TextAsset levelData;
+    private int _currentLevelIndex = -1;
+    public static LevelManager Instance { get; private set; }  
     public Levels Levels { get; private set; }
-
+    public string[] GetCurrentLevelData()
+    {
+        if (_currentLevelIndex == -1)
+        {
+            Debug.LogError("Current level is not selected", this);
+            return null;
+        }
+        return Levels.levels[_currentLevelIndex].level_data;
+    }
+    public void LoadGameLevel(int levelIndex)
+    {
+        _currentLevelIndex = levelIndex;
+        SceneManager.LoadSceneAsync(gameScene);
+    }
+    public void LoadMainMenu() => SceneManager.LoadSceneAsync(mainMenuScene);
     private void Awake()
     {
         if (Instance != null && Instance != this)
             Destroy(this.gameObject);
         else
             Instance = this;
-        DontDestroyOnLoad(gameObject);
 
-        Levels = LoadLevelsFromFile();
+        Levels = ReadLevelsFromFile();
+
+        DontDestroyOnLoad(gameObject);
     }
-    private Levels LoadLevelsFromFile()
+    private Levels ReadLevelsFromFile()
     {
         Assert.IsNotNull(levelData);
 

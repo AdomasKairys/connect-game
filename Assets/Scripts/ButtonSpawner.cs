@@ -1,13 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
 
 public class ButtonSpawner : MonoBehaviour
 {
     [SerializeField] private GameObject buttonPrefab;
     private Camera _mainCamera;
-
     private void Awake()
     {
         _mainCamera = Camera.main;
@@ -15,53 +15,54 @@ public class ButtonSpawner : MonoBehaviour
     void Start()
     {
         SpawnButtons();
+        Destroy(gameObject);
     }
-
     private void SpawnButtons()
     {
-        var coordinateToSpawn = LevelDataToCoordinates();
-
-        GameObject currentObject = null;
-        GameObject firstObject = null;
-        GameObject previousObject = null;
-        for (int i = 0; i < coordinateToSpawn.Length; i++, previousObject = currentObject)
+        var coordinates = LevelDataAsCoordinates();
+        ButtonController previousButton = null;
+        ButtonController rootButton = null;
+        for (int i = 0; i < coordinates.Length; i++)
         {
-            currentObject = Instantiate(buttonPrefab, coordinateToSpawn[i], Quaternion.identity);
-            bool hasComponent = currentObject.TryGetComponent(out ButtonController buttonController);
+            // Instantiate button
+            var buttonObject = Instantiate(buttonPrefab, coordinates[i], Quaternion.identity);
 
-            if (!hasComponent)
+            // Configure button
+            if (!buttonObject.TryGetComponent(out ButtonController buttonController))
                 continue;
 
-            buttonController.SetNumberText((i+1).ToString());
+            buttonController.buttonIndex = i;
+            buttonController.previousButton = previousButton;
 
-            if (previousObject == null)
+            // Mark the first button as the root
+            if (i == 0)
             {
-                firstObject = currentObject;
                 buttonController.isRoot = true;
-                continue;
+                rootButton = buttonController;
             }
 
-            if (previousObject.TryGetComponent(out ButtonController previousButtonController))
-                buttonController.previousButton = previousButtonController;
+            previousButton = buttonController;
         }
-        if (firstObject != null && currentObject != null)
-        {
-            firstObject.GetComponent<ButtonController>().previousButton = currentObject.GetComponent<ButtonController>();
-        }
+
+        // Close the circular link
+        if (rootButton != null && previousButton != null)
+            rootButton.previousButton = previousButton;
     }
-
-    private Vector3[] LevelDataToCoordinates()
+    private Vector3[] LevelDataAsCoordinates()
     {
-        string[] coordinates = LevelManager.Instance.Levels.levels[LevelManager.Instance.CurrentLevelIndex].level_data;
+        var _levelData = LevelManager.Instance.GetCurrentLevelData();
 
-        Vector3[] coords = coordinates.Where((_,i)=> i % 2 == 0)
+        if (_levelData.Length % 2 != 0)
+            Debug.LogWarning("Level data list doens't contain an even number of elements, coordinates will be missing", this);
+
+        Vector3[] coordinates = _levelData.Where((_,i)=> i % 2 == 0)
             .Zip(
-                coordinates.Where((_, i) => (i+1) % 2 == 0),
+                _levelData.Where((_, i) => (i+1) % 2 == 0),
                 (x, y) => new Vector3(1-float.Parse(x)/1000, 1-float.Parse(y)/1000, -_mainCamera.transform.position.z)
             )
             .Select((v) => _mainCamera.ViewportToWorldPoint(v))
             .ToArray();
 
-        return coords;
+        return coordinates;
     }
 }
