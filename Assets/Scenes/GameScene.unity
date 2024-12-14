@@ -767,6 +767,14 @@ MonoBehaviour:
           m_BoolArgument: 1
         m_CallState: 2
   buttonSpawnerPrefab: {fileID: 2516147031250021393, guid: 180fb6587c987d34a8ff0ddb7bd7c512, type: 3}
+  minCameraSize: 6
+  maxCameraSize: 20
+  checkRadius: 100
+  stepDistance: 0.1
+  maxAttempts: 100
+  numberLayer:
+    serializedVersion: 2
+    m_Bits: 8
 --- !u!4 &1432701733
 Transform:
   m_ObjectHideFlags: 0
